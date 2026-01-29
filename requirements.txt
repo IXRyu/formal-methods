@@ -1,2 +1,6 @@
 pandas
 pm4py
+streamlit
+openai
+python-dotenv
+sklearn

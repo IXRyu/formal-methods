@@ -1,0 +1,29 @@
+
+    I am working on a Process Mining project analyzing the BPI Challenge 2012 (Financial Loan Application Process).
+    Please act as a Senior Process Analyst and perform the following tasks:
+    1. Generate a Management Report summarizing the process health.
+    2. Identify Anomalies and Problems based on the metrics.
+    3. Suggest Optimizations to fix the bottlenecks.
+    4. Predict what might go wrong if the bottlenecks are not fixed.
+
+    HERE IS THE DATA FROM MY PYTHON ANALYSIS:
+
+    [METRICS]
+    - Model Fitness: 0.9767 (Ability to replay observed cases)
+    - Model Precision: 0.3122 (Ability to disallow bad behavior)
+    - Total Cases: 13087
+    - Total Events: 262200
+
+    [TOP 3 BOTTLENECKS (Slowest Hand-overs)]
+       - From 'W_Valideren aanvraag' to 'W_Wijzigen contractgegevens': Takes avg 736.21 hours.
+   - From 'W_Nabellen incomplete dossiers' to 'W_Wijzigen contractgegevens': Takes avg 339.86 hours.
+   - From 'W_Wijzigen contractgegevens' to 'W_Nabellen offertes': Takes avg 97.90 hours.
+
+    [DOMAIN CONTEXT]
+    - This is a loan application process.
+    - 'A_APPROVED' means the bank approved the loan.
+    - 'A_DECLINED' means the bank rejected it.
+    - 'W_Completeren aanvraag' is waiting for the customer to add missing info.
+
+    Based on this data, please provide a structured analysis.
+    
