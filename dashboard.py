@@ -182,6 +182,11 @@ def load_data(file_path):
     df['time:timestamp'] = pd.to_datetime(df['time:timestamp'], format='mixed')
     df['case:concept:name'] = df['case:concept:name'].astype(str)
     
+    # Filter for COMPLETE lifecycle events only (same as mine.py)
+    # This ensures consistency with the mining results
+    if 'lifecycle:transition' in df.columns:
+        df = df[df['lifecycle:transition'].astype(str).str.upper() == 'COMPLETE']
+    
     df = df.sort_values(['case:concept:name', 'time:timestamp'])
     df['next_act'] = df.groupby('case:concept:name')['concept:name'].shift(-1)
     df['next_time'] = df.groupby('case:concept:name')['time:timestamp'].shift(-1)
@@ -420,28 +425,60 @@ with tab3:
             
             if predict_clicked:
                 with st.spinner("🔮 Analyzing patterns..."):
+                    # Get the last activity in history
+                    last_activity = history[-1]
+                    
+                    # Calculate actual transition probabilities from the dataset
+                    transitions = df[df['concept:name'] == last_activity]['next_act'].value_counts(normalize=True).head(5)
+                    transition_stats = "\n".join([f"   - {act}: {prob*100:.1f}% probability" for act, prob in transitions.items() if pd.notna(act)])
+                    
+                    # Get overall most common activities after the history pattern
+                    if len(history) >= 2:
+                        second_last = history[-2]
+                        pattern_transitions = df[(df['concept:name'] == second_last) & (df['next_act'] == last_activity)]
+                        if len(pattern_transitions) > 0:
+                            # Find what typically follows this two-step pattern
+                            case_ids_with_pattern = pattern_transitions['case:concept:name'].unique()
+                            following_activities = df[
+                                (df['case:concept:name'].isin(case_ids_with_pattern)) & 
+                                (df['concept:name'] == last_activity)
+                            ]['next_act'].value_counts(normalize=True).head(3)
+                            pattern_stats = "\n".join([f"   - {act}: {prob*100:.1f}%" for act, prob in following_activities.items() if pd.notna(act)])
+                        else:
+                            pattern_stats = "No pattern data available"
+                    else:
+                        pattern_stats = "Not enough history for pattern analysis"
+                    
                     pred_prompt = f"""
-                    You are a predictive process monitoring AI.
+                    You are a predictive process monitoring AI with access to REAL data statistics.
                     
                     PROCESS CONTEXT:
                     - Dataset: BPI Challenge 2012 (Financial Loan Application)
-                    - History of events for this case: {history}
+                    - Current case history: {history}
+                    - Last activity: {last_activity}
+                    
+                    ACTUAL TRANSITION STATISTICS FROM THE DATASET:
+                    After '{last_activity}', the most common next activities are:
+                    {transition_stats}
+                    
+                    Pattern-based analysis (what follows {history[-2] if len(history) >= 2 else 'N/A'} → {last_activity}):
+                    {pattern_stats}
                     
                     TASK:
-                    Based on standard loan application flows (Application -> Validation -> Offer -> Decision),
-                    predict the single most likely NEXT event.
+                    Based on the ACTUAL statistics above (not general knowledge), predict the most likely next event.
+                    Choose the activity with the highest probability from the statistics.
                     
                     FORMAT:
-                    Prediction: [Event Name]
-                    Confidence: [High/Medium/Low]
-                    Reasoning: [1 sentence explanation]
+                    Prediction: [Event Name - must match one from the statistics]
+                    Confidence: [High if >50%, Medium if 20-50%, Low if <20%]
+                    Reasoning: [Based on X% probability from dataset]
                     """
                     
                     try:
                         completion = client.chat.completions.create(
                             model="gpt-3.5-turbo",
                             messages=[
-                                {"role": "system", "content": "You are a Process Mining expert predictor."},
+                                {"role": "system", "content": "You are a Process Mining expert. Use ONLY the provided statistics to make predictions. Do not use general knowledge - rely strictly on the data provided."},
                                 {"role": "user", "content": pred_prompt}
                             ]
                         )
